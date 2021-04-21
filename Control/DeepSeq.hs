@@ -5,7 +5,11 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+#if __GLASGOW_HASKELL__ >= 810
+{-# LANGUAGE Trustworthy #-}
+#else
 {-# LANGUAGE Safe #-}
+#endif
 {-# LANGUAGE TypeOperators #-}
 
 #if __GLASGOW_HASKELL__ >= 706
@@ -14,6 +18,9 @@
 
 #if __GLASGOW_HASKELL__ >= 708
 {-# LANGUAGE EmptyCase #-}
+#endif
+#if __GLASGOW_HASKELL__ >= 810
+{-# LANGUAGE PartialTypeConstructors, TypeFamilies, UndecidableInstances #-}
 #endif
 
 -----------------------------------------------------------------------------
@@ -85,6 +92,9 @@ module Control.DeepSeq (
      NFData2(liftRnf2), rnf2,
   ) where
 
+#if MIN_VERSION_base(4,14,0)
+import GHC.Types (type (@@))
+#endif
 import Control.Applicative
 import Control.Concurrent ( ThreadId, MVar )
 import Control.Exception ( MaskingState(..) )
@@ -149,6 +159,10 @@ import GHC.SrcLoc ( SrcLoc(..) )
 
 import GHC.Fingerprint.Type ( Fingerprint(..) )
 import GHC.Generics
+
+#if MIN_VERSION_base(4,14,0)
+import GHC.Types ( Total )
+#endif
 
 -- | Hidden internal type-class
 class GNFData arity f where
@@ -369,7 +383,7 @@ class NFData a where
     --
     rnf :: a -> ()
 
-    default rnf :: (Generic a, GNFData Zero (Rep a)) => a -> ()
+    default rnf :: (Total (Rep a),Generic a, GNFData Zero (Rep a)) => a -> ()
     rnf = grnf RnfArgs0 . from
 
 -- | A class of functors that can be fully evaluated.
@@ -383,7 +397,7 @@ class NFData1 f where
     -- See 'rnf' for the generic deriving.
     liftRnf :: (a -> ()) -> f a -> ()
 
-    default liftRnf :: (Generic1 f, GNFData One (Rep1 f)) => (a -> ()) -> f a -> ()
+    default liftRnf :: (Generic1 f, GNFData One (Rep1 f), Rep1 f @@ a) => (a -> ()) -> f a -> ()
     liftRnf r = grnf (RnfArgs1 r) . from1
 
 -- | Lift the standard 'rnf' function through the type constructor.
@@ -502,7 +516,11 @@ instance (NFData1 f, NFData1 g) => NFData1 (Compose f g) where
   liftRnf r = liftRnf (liftRnf r) . getCompose
 
 -- | @since 1.4.3.0
+#if MIN_VERSION_base(4,14,0)
+instance (f @@ a, g @@ a, f @@ g a, NFData1 f, NFData1 g, NFData a) => NFData (Compose f g a) where
+#else
 instance (NFData1 f, NFData1 g, NFData a) => NFData (Compose f g a) where
+#endif 
   rnf = rnf1
 
 -- | @since 1.4.3.0
@@ -511,7 +529,11 @@ instance (NFData1 f, NFData1 g) => NFData1 (Functor.Sum f g) where
   liftRnf rnf0 (Functor.InR r) = liftRnf rnf0 r
 
 -- | @since 1.4.3.0
+#if MIN_VERSION_base(4,14,0)
+instance (f @@ a, g @@ a, NFData1 f, NFData1 g, NFData a) => NFData (Functor.Sum f g a) where
+#else
 instance (NFData1 f, NFData1 g, NFData a) => NFData (Functor.Sum f g a) where
+#endif 
   rnf = rnf1
 
 -- | @since 1.4.3.0
@@ -519,7 +541,11 @@ instance (NFData1 f, NFData1 g) => NFData1 (Functor.Product f g) where
   liftRnf rnf0 (Functor.Pair f g) = liftRnf rnf0 f `seq` liftRnf rnf0 g
 
 -- | @since 1.4.3.0
+#if MIN_VERSION_base(4,14,0)
+instance (f @@ a, g @@ a, NFData1 f, NFData1 g, NFData a) => NFData (Functor.Product f g a) where
+#else
 instance (NFData1 f, NFData1 g, NFData a) => NFData (Functor.Product f g a) where
+#endif
   rnf = rnf1
 
 instance NFData a => NFData (Ratio a) where
