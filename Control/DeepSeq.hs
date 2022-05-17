@@ -120,7 +120,7 @@ import System.Exit ( ExitCode(..) )
 import System.Mem.StableName ( StableName )
 
 #if MIN_VERSION_base(4,16,0)
-import GHC.Types (type (@), Total)
+import GHC.Types (type (@))
 #endif
 
 #if MIN_VERSION_base(4,6,0)
@@ -193,11 +193,7 @@ instance NFData a => GNFData arity (K1 i a) where
   grnf _ = rnf . unK1
   {-# INLINEABLE grnf #-}
 
-instance (
-#if MIN_VERSION_base(4,16,0)
-  Total a,
-#endif
-  GNFData arity a) => GNFData arity (M1 i c a) where
+instance GNFData arity a => GNFData arity (M1 i c a) where
   grnf args = grnf args . unM1
   {-# INLINEABLE grnf #-}
 
@@ -213,19 +209,11 @@ instance GNFData arity (URec a) where
   {-# INLINEABLE grnf #-}
 #endif
 
-instance (
-#if MIN_VERSION_base(4,16,0)
-  Total a, Total b, 
-#endif
-  GNFData arity a, GNFData arity b) => GNFData arity (a :*: b) where
+instance (GNFData arity a, GNFData arity b) => GNFData arity (a :*: b) where
   grnf args (x :*: y) = grnf args x `seq` grnf args y
   {-# INLINEABLE grnf #-}
 
-instance (
-#if MIN_VERSION_base(4,16,0)
-  Total a, Total b,
-#endif
-  GNFData arity a, GNFData arity b) => GNFData arity (a :+: b) where
+instance (GNFData arity a, GNFData arity b) => GNFData arity (a :+: b) where
   grnf args (L1 x) = grnf args x
   grnf args (R1 x) = grnf args x
   {-# INLINEABLE grnf #-}
@@ -233,18 +221,10 @@ instance (
 instance GNFData One Par1 where
     grnf (RnfArgs1 r) = r . unPar1
 
-instance (
-#if MIN_VERSION_base(4,16,0)
-  Total f,
-#endif
-  NFData1 f) => GNFData One (Rec1 f) where
+instance (NFData1 f) => GNFData One (Rec1 f) where
     grnf (RnfArgs1 r) = liftRnf r . unRec1
 
-instance (
-#if MIN_VERSION_base(4,16,0)
-  Total f, Total g,
-#endif
-  NFData1 f, GNFData One g) => GNFData One (f :.: g) where
+instance (NFData1 f, GNFData One g) => GNFData One (f :.: g) where
     grnf args = liftRnf (grnf args) . unComp1
 
 infixr 0 $!!
@@ -322,7 +302,7 @@ force x = x `deepseq` x
 -- | Deeply strict version of 'Control.Applicative.<$>'.
 --
 -- @since 1.4.3.0
-(<$!!>) :: (Monad m, NFData b) => (a -> b) -> m a -> m b
+(<$!!>) :: (Applicative m, Monad m, NFData b) => (a -> b) -> m a -> m b
 #if MIN_VERSION_base(4,8,0)
 -- Minor optimisation for AMP; this avoids the redundant indirection
 -- through 'return' in case GHC isn't smart enough to optimise it away
@@ -557,52 +537,28 @@ instance NFData1 Ratio where
   liftRnf r x = r (numerator x) `seq` r (denominator x)
 
 -- | @since 1.4.3.0
-instance (
-#if MIN_VERSION_base(4,16,0)
-      Total f, Total g, 
-#endif
-  NFData1 f, NFData1 g) => NFData1 (Compose f g) where
+instance (NFData1 f, NFData1 g) => NFData1 (Compose f g) where
   liftRnf r = liftRnf (liftRnf r) . getCompose
 
 -- | @since 1.4.3.0
-instance (
-#if MIN_VERSION_base(4,16,0)
-      Total f, Total g, 
-#endif
-  NFData1 f, NFData1 g, NFData a) => NFData (Compose f g a) where
+instance (NFData1 f, NFData1 g, NFData a) => NFData (Compose f g a) where
   rnf = rnf1
 
 -- | @since 1.4.3.0
-instance (
-#if MIN_VERSION_base(4,16,0)
-      Total f, Total g, 
-#endif
-  NFData1 f, NFData1 g) => NFData1 (Functor.Sum f g) where
+instance (NFData1 f, NFData1 g) => NFData1 (Functor.Sum f g) where
   liftRnf rnf0 (Functor.InL l) = liftRnf rnf0 l
   liftRnf rnf0 (Functor.InR r) = liftRnf rnf0 r
 
 -- | @since 1.4.3.0
-instance (
-#if MIN_VERSION_base(4,16,0)
-      Total f, Total g, 
-#endif
-  NFData1 f, NFData1 g, NFData a) => NFData (Functor.Sum f g a) where
+instance (NFData1 f, NFData1 g, NFData a) => NFData (Functor.Sum f g a) where
   rnf = rnf1
 
 -- | @since 1.4.3.0
-instance (
-#if MIN_VERSION_base(4,16,0)
-      Total f, Total g, 
-#endif
-  NFData1 f, NFData1 g) => NFData1 (Functor.Product f g) where
+instance (NFData1 f, NFData1 g) => NFData1 (Functor.Product f g) where
   liftRnf rnf0 (Functor.Pair f g) = liftRnf rnf0 f `seq` liftRnf rnf0 g
 
 -- | @since 1.4.3.0
-instance (
-#if MIN_VERSION_base(4,16,0)
-    Total f, Total g, 
-#endif
-  NFData1 f, NFData1 g, NFData a) => NFData (Functor.Product f g a) where
+instance (NFData1 f, NFData1 g, NFData a) => NFData (Functor.Product f g a) where
   rnf = rnf1
 
 instance NFData a => NFData (Ratio a) where
